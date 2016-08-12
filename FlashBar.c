@@ -16,66 +16,60 @@
 
 #include "ssid_config.h"
 
-#define PORT 80
-
-char* buf;
-u16_t buflen;
-void server_serve(struct netconn *conn) {
-	struct netbuf *inbuf;
-	err_t recv_err;
-
-	recv_err = netconn_recv(conn, &inbuf);
-	if (recv_err == ERR_OK){
-		printf("Receive\r\n");
-		netbuf_data(inbuf, (void**)&buf, &buflen);
-
-		printf("%s\n", buf);
-		char outBuff[80];
-		snprintf(outBuff, sizeof(outBuff), "Uptime %d seconds\r\n",
-			xTaskGetTickCount()*portTICK_RATE_MS/1000);
-		netconn_write(conn, outBuff, strlen(outBuff), NETCONN_COPY);
-		//netconn_write(conn, (const unsigned char*)(start_page), (size_t)get_start_page_size(), NETCONN_NOCOPY);
-	}
-
-	netconn_close(conn);
-	netbuf_delete(inbuf);
-}
+#define PORT 5568
+#define SACNLENGTH 638
 
 void task(void *pvParameters) {
 	printf("Open server in 10 seconds.\r\n");
 	vTaskDelay(10000 / portTICK_RATE_MS);
 
-	struct netconn *conn, *newconn;
-	err_t err, accept_err;
+	struct netconn *conn;
+	err_t err;
 
-	/* Create a new TCP connection handle */
-	conn = netconn_new(NETCONN_TCP);
+	/* Create a new connection handle */
+	conn = netconn_new(NETCONN_UDP);
 	if(!conn) {
 		printf("Error: Failed to allocate socket.\r\n");
 		return;
 	}
 
-	/* Bind to port 80 (HTTP) with default IP address */
+	/* Bind to port with default IP address */
 	err = netconn_bind(conn, IP_ADDR_ANY, PORT);
 	if(err != ERR_OK) {
 		printf("Error: Failed to bind socket. err=%d\r\n", err);
 		return;
 	}
 
-	/* Put the connection into LISTEN state */
-	netconn_listen(conn);
 	printf("Listening for connections.\r\n");
 
 	while(1) {
-		printf("Loop\r\n");
+		//printf("Loop\r\n");
 
-		/* accept any icoming connection */
-		accept_err = netconn_accept(conn, &newconn);
-		printf("Accept incoming\r\n");
-		if(accept_err == ERR_OK) {
-			server_serve(newconn);
-			netconn_delete(newconn);
+		struct netbuf *inbuf;
+
+		err = netconn_recv(conn, &inbuf);
+
+		if(err != ERR_OK) {
+			printf("Error: Failed to receive packet. err=%d\r\n", err);
+			continue;
 		}
+
+		char* buf;
+		u16_t buflen;
+
+		netbuf_data(inbuf, (void**)&buf, &buflen);
+		if (buflen == SACNLENGTH) {
+			printf("Received Len %d\n", buflen);
+			printf("%s\n", buf);
+
+			int channel1, channel2, channel3;
+			channel1 = buf[126];
+			channel2 = buf[127];
+			channel3 = buf[128];
+
+		}
+
+		netbuf_delete(inbuf);
 	}
 }
 
@@ -90,6 +84,6 @@ void user_init(void) {
     sdk_wifi_set_opmode(STATION_MODE);
     sdk_wifi_station_set_config(&config);
 
-	xTaskCreate(&task, (signed char *)"task", 256, NULL, 2, NULL);
+	xTaskCreate(&task, (signed char *)"task", 768, NULL, 8, NULL);
 }
 

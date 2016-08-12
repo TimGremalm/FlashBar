@@ -7,6 +7,8 @@
 #include "task.h"
 #include "queue.h"
 
+#include "pwm.h"
+
 #include "lwip/api.h"
 #include "lwip/err.h"
 #include "lwip/sockets.h"
@@ -60,13 +62,16 @@ void task(void *pvParameters) {
 		netbuf_data(inbuf, (void**)&buf, &buflen);
 		if (buflen == SACNLENGTH) {
 			printf("Received Len %d\n", buflen);
-			printf("%s\n", buf);
+			//printf("%s\n", buf);
 
-			int channel1, channel2, channel3;
+			int channel1;
 			channel1 = buf[126];
-			channel2 = buf[127];
-			channel3 = buf[128];
+			printf("Value %d\n\n", channel1);
 
+			uint16_t dutyChannel1 = channel1;
+			dutyChannel1 = dutyChannel1 << 8;
+
+			pwm_set_duty(dutyChannel1);
 		}
 
 		netbuf_delete(inbuf);
@@ -83,6 +88,16 @@ void user_init(void) {
     };
     sdk_wifi_set_opmode(STATION_MODE);
     sdk_wifi_station_set_config(&config);
+
+	//Init PWM on GPIO
+	uint8_t pins[3];
+	pins[0] = 5;		//NodeMCU1
+	pins[1] = 4;		//NodeMCU2
+	pins[2] = 0;		//NodeMCU3
+	pwm_init(3, pins);
+	pwm_set_freq(1000); //1kz
+	pwm_set_duty(UINT16_MAX/1000);
+	pwm_start();
 
 	xTaskCreate(&task, (signed char *)"task", 768, NULL, 8, NULL);
 }

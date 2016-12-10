@@ -23,7 +23,7 @@
 
 void task(void *pvParameters) {
 	printf("Open server in 10 seconds.\r\n");
-	vTaskDelay(10000 / portTICK_RATE_MS);
+	vTaskDelay(10000);
 
 	struct netconn *conn;
 	err_t err;
@@ -99,6 +99,6 @@ void user_init(void) {
 	pwm_set_duty(UINT16_MAX/1000);
 	pwm_start();
 
-	xTaskCreate(&task, (signed char *)"task", 768, NULL, 8, NULL);
+	xTaskCreate(task, "task", 768, NULL, 8, NULL);
 }
 

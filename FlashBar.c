@@ -94,7 +94,7 @@ void user_init(void) {
 	pins[0] = 5;		//NodeMCU1
 	pins[1] = 4;		//NodeMCU2
 	pins[2] = 0;		//NodeMCU3
-	pwm_init(3, pins);
+	pwm_init(3, pins, false);
 	pwm_set_freq(1000); //1kz
 	pwm_set_duty(UINT16_MAX/1000);
 	pwm_start();
